@@ -1,2 +1,7 @@
+# Binaries.
 /app_updater
 /server
+
+# Windows binaries.
+/app_updater.exe
+/server.exe
