@@ -63,7 +63,7 @@ except CatchableError as e:
   echo "Update failed with: " & e.msg
 
 echo fmt"Executing {executable}"
-let p = startProcess(publishDir / executable, "", options = {})
+let p = startProcess(publishDir / executable, "", options = {poParentStreams})
 try:
   discard p.waitForExit()
 finally:
