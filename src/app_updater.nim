@@ -8,11 +8,17 @@ import zippy/ziparchives
 
 import shared
 
-proc download(url: string): string =
-  echo fmt"Downloading {url}"
+proc downloadString(url: string): string =
+  echo fmt"Downloading string from {url}"
   var client = newHttpClient()
   defer: client.close()
   client.getContent(url)
+
+proc downloadFile(url: string, dest: string) =
+  echo fmt"Downloading file from {url}"
+  var client = newHttpClient()
+  defer: client.close()
+  client.downloadFile(url, dest)
 
 let
   (host, port) = readCommandLineArgs()
@@ -23,13 +29,13 @@ let
 
 var installed = false
 
-if not exists or download(hashUrl) != hashFile(publishArchive):
+if not exists or downloadString(hashUrl) != hashFile(publishArchive):
   echo "Deleting old version"
   removeFile(publishArchive)
   removeDir(publishDir)
   removeDir(tempDir)
   echo fmt"Updating archive"
-  writeFile(publishArchive, download(downloadUrl))
+  downloadFile(downloadUrl, publishArchive)
   echo "Extracting archive"
   extractAll(publishArchive, tempDir)
   moveDir(tempDir / publishDir, getCurrentDir() / publishDir)
