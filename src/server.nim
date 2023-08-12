@@ -18,8 +18,9 @@ router myrouter:
     resp Http200, blob, "application/octet-stream"
 
 proc main() =
+  checkParamCount(2)
   let
-    (host, port) = readCommandLineArgs()
+    (host, port) = readHostAndPortFromParams()
     settings = newSettings(bindAddr = host, port = port.Port)
   var jester = initJester(myrouter, settings = settings)
   jester.serve()

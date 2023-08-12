@@ -1,7 +1,6 @@
 import std/httpclient
 import std/os
 import std/osproc
-import std/sequtils
 import std/strformat
 
 import zippy/ziparchives
@@ -20,14 +19,15 @@ proc downloadFile(url: string, dest: string) =
   defer: client.close()
   client.downloadFile(url, dest)
 
+checkParamCount(3)
+
 let
-  (host, port) = readCommandLineArgs()
+  (host, port) = readHostAndPortFromParams()
+  executable = paramStr(3)
   hashUrl = fmt"http://{host}:{port}/hash"
   downloadUrl = fmt"http://{host}:{port}/download"
   tempDir = "temp"
   exists = fileExists(publishArchive) and dirExists(publishDir)
-
-var installed = false
 
 if not exists or downloadString(hashUrl) != hashFile(publishArchive):
   echo "Deleting old version"
@@ -40,23 +40,14 @@ if not exists or downloadString(hashUrl) != hashFile(publishArchive):
   extractAll(publishArchive, tempDir)
   moveDir(tempDir / publishDir, getCurrentDir() / publishDir)
   removeDir(tempDir)
-
-  installed = true
+  echo fmt"Making file executable {executable}"
+  inclFilePermissions(publishDir / executable, {fpUserExec})
 else:
   echo "Archive is up to date"
 
-let executables = toSeq(walkFiles(fmt"{publishDir}/*.exe"))
-
-if executables.len == 0:
-  raise newException(CatchableError, "No executable found")
-elif executables.len > 1:
-  raise newException(CatchableError, fmt"Several executables found: {executables}")
-else:
-  let executable = executables[0]
-  if installed:
-    echo fmt"Making file executable {executable}"
-    inclFilePermissions(executable, {fpUserExec})
-  echo fmt"Executing {executable}"
-  let p = startProcess(executable, "", options = {})
-  defer: p.close()
+echo fmt"Executing {executable}"
+let p = startProcess(publishDir / executable, "", options = {})
+try:
   discard p.waitForExit()
+finally:
+  p.close()
