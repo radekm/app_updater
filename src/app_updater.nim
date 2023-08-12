@@ -26,24 +26,41 @@ let
   executable = paramStr(3)
   hashUrl = fmt"http://{host}:{port}/hash"
   downloadUrl = fmt"http://{host}:{port}/download"
+  newPublishArchive = fmt"new-{publishArchive}"
   tempDir = "temp"
   exists = fileExists(publishArchive) and dirExists(publishDir)
 
-if not exists or downloadString(hashUrl) != hashFile(publishArchive):
-  echo "Deleting old version"
-  removeFile(publishArchive)
-  removeDir(publishDir)
+proc update() =
+  # Latest version is already installed.
+  if exists and downloadString(hashUrl) == hashFile(publishArchive):
+    return
+
+  echo "Deleting temporaries"
+  removeFile(newPublishArchive)
   removeDir(tempDir)
+
   echo fmt"Updating archive"
-  downloadFile(downloadUrl, publishArchive)
+  downloadFile(downloadUrl, newPublishArchive)
+
   echo "Extracting archive"
-  extractAll(publishArchive, tempDir)
-  moveDir(tempDir / publishDir, getCurrentDir() / publishDir)
+  extractAll(newPublishArchive, tempDir)
+
+  echo fmt"Making file executable"
+  inclFilePermissions(tempDir / publishDir / executable, {fpUserExec})
+
+  echo "Replacing current version with new version"
+  removeDir(publishDir)
+  moveDir(tempDir / publishDir, publishDir)
+  removeFile(publishArchive)
+  moveFile(newPublishArchive, publishArchive)
+
+  echo "Deleting temporaries"
   removeDir(tempDir)
-  echo fmt"Making file executable {executable}"
-  inclFilePermissions(publishDir / executable, {fpUserExec})
-else:
-  echo "Archive is up to date"
+
+try:
+  update()
+except CatchableError as e:
+  echo "Update failed with: " & e.msg
 
 echo fmt"Executing {executable}"
 let p = startProcess(publishDir / executable, "", options = {})
