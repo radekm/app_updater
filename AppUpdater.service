@@ -1,0 +1,19 @@
+[Unit]
+Description=AppUpdater
+
+# TODO: Set user. Set host and port.
+[Service]
+ExecStart=/home/someuser/app-updater/server host port
+WorkingDirectory=/home/someuser/app-updater
+SyslogIdentifier=AppUpdater
+User=someuser
+
+Restart=always
+RestartSec=5
+
+# Server is memory hungry.
+MemoryHigh=448M
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
