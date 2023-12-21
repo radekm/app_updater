@@ -7,9 +7,9 @@ and you need to distribute updates to your users.
 Suppose your users are using Windows. The first step is to publish your .NET app for Windows:
 
 ```
-rm -r bin/Release/net7.0/win-x64/
+rm -r bin/Release/net8.0/win-x64/
 dotnet publish -c Release -r win-x64 --self-contained true
-cd bin/Release/net7.0/win-x64
+cd bin/Release/net8.0/win-x64
 zip -r ../../../../publish.zip publish
 cd ../../../..
 ```
