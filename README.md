@@ -19,7 +19,7 @@ On a server create a directory where you copy `publish.zip` and `server` executa
 Start server
 
 ```
-./server localhost 2222
+./server 127.0.0.1 2222
 ```
 
 In your browser you can check that `http://localhost:2222/hash` shows hash of `publish.zip`.
@@ -37,40 +37,14 @@ and `YourAppName.exe` is an executable of your application
 `appupdater.exe` will download and extract `publish.zip` to current working directory
 and run the executable.
 
-# Cross-compile from Mac for Linux
+# Cross-compile server from Mac for Linux
 
-Installing
+Run
 
-```
-brew install x86_64-elf-gcc
-```
-
-and configuring Nim compiler to use `x86_64-elf-gcc` as compiler and linker doesn't
-work because some header files are missing. Using `llvm` to cross-compile
-has the same problem.
-
-So we use Zig 0.11. We need to use command `zig cc` and since `clang.exe` value
-must not contain spaces we wrap it in shell script `zigcc`. Now we can run
-
-```
-PATH=".:$PATH" nimble build \
-  --cpu:amd64 --os:linux -d:release \
-  --cc:clang \
-  --clang.exe="zigcc" \
-  --clang.linkerexe="zigcc" \
-  --passC:--target=x86_64-linux-gnu --passL:--target=x86_64-linux-gnu
+```bash
+zig build server -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu
 ```
 
-# Cross-compile from Mac for Windows
+# Cross-compile client from Mac for Windows
 
-First MinGW-w64 toolchain must be installed:
-
-```
-brew install mingw-w64
-```
-
-Then run
-
-```
-nimble build -d:mingw -d:release
-```
+Current version of client is not yet finished. Please use the old version.

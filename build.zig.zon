@@ -1,0 +1,18 @@
+.{
+    .name = "app-updater",
+    .version = "0.2.0",
+    .paths = .{
+        "src",
+        "build.zig",
+        "build.zig.zon",
+        "LICENSE.md",
+        "README.md",
+    },
+
+    .dependencies = .{
+        .httpz = .{
+            .url = "https://github.com/karlseguin/http.zig/archive/4667e3576be8e993e731bd8f4e71bed8a0b1bf63.tar.gz",
+            .hash = "1220d9584107c65e57ba5db0bfcfd9e9a1f2e59e024cbd16959e23cb13d10a0ca463",
+        },
+    },
+}
