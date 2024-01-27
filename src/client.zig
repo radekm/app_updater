@@ -143,5 +143,17 @@ pub fn main() !void {
         };
     }
 
-    // TODO: Run app.
+    // Execute application.
+    const app_path = try std.fs.path.join(allocator, &[_][]const u8{
+        shared.publish_dir,
+        executable,
+    });
+    defer allocator.free(app_path);
+    std.debug.print("Executing {s}\n", .{app_path});
+    var app = std.ChildProcess.init(&[_][]const u8{app_path}, allocator);
+    if (app.spawnAndWait()) |term| {
+        std.debug.print("Result: {}\n", .{term});
+    } else |e| {
+        std.debug.print("Cannot spawn process: {}\n", .{e});
+    }
 }
