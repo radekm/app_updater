@@ -42,7 +42,7 @@ pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16) bool {
 
 const UpdateError = error{MissingRemoteData};
 
-pub fn update(allocator: Allocator, host: []const u8, port: u16) !void {
+pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []const u8) !void {
     const new_publish_archive = "new-" ++ shared.publish_archive;
     const temp_dir = "temp";
 
@@ -78,9 +78,47 @@ pub fn update(allocator: Allocator, host: []const u8, port: u16) !void {
 
     try unzip.unzip(allocator, new_publish_archive, temp_dir);
 
-    // TODO: Make extracted application executable.
+    std.debug.print("Making file executable\n", .{});
+    {
+        const path = try std.fs.path.join(allocator, &[_][]const u8{
+            temp_dir,
+            shared.publish_dir,
+            executable,
+        });
+        defer allocator.free(path);
 
-    // TODO: Replace current version with new version.
+        // Opening the executable ensures that it exists.
+        const file = try std.fs.cwd().openFile(path, .{});
+        defer file.close();
+
+        if (std.fs.has_executable_bit) {
+            const metadata = try file.metadata();
+            var permissions = metadata.permissions();
+            permissions.inner.unixSet(.user, .{ .execute = true });
+            try file.setPermissions(permissions);
+        }
+    }
+
+    std.debug.print("Replacing current version with new version\n", .{});
+    {
+        const temp_publish_dir = try std.fs.path.join(allocator, &[_][]const u8{
+            temp_dir,
+            shared.publish_dir,
+        });
+        defer allocator.free(temp_publish_dir);
+
+        try std.fs.cwd().deleteTree(shared.publish_dir);
+        try std.fs.cwd().rename(temp_publish_dir, shared.publish_dir);
+        std.fs.cwd().deleteFile(shared.publish_archive) catch |e| {
+            // Ignore file not found error.
+            if (e != std.fs.Dir.DeleteFileError.FileNotFound)
+                return e;
+        };
+        try std.fs.cwd().rename(new_publish_archive, shared.publish_archive);
+    }
+
+    std.debug.print("Deleting temporaries\n", .{});
+    try std.fs.cwd().deleteTree(temp_dir);
 }
 
 const MainError = error{NotEnoughArguments};
@@ -97,10 +135,10 @@ pub fn main() !void {
     }
     const host = args[1];
     const port = try std.fmt.parseInt(u16, args[2], 10);
-    // const executable = args[3]; // Program to run inside `publish_dir`.
+    const executable = args[3]; // Program to run inside `publish_dir`.
 
     if (updateNeeded(allocator, host, port)) {
-        update(allocator, host, port) catch |e| {
+        update(allocator, host, port, executable) catch |e| {
             std.debug.print("Updating failed with {}", .{e});
         };
     }
