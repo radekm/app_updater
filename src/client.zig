@@ -1,6 +1,7 @@
 const std = @import("std");
 const http = std.http;
 const shared = @import("shared.zig");
+const unzip = @import("unzip.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -75,8 +76,7 @@ pub fn update(allocator: Allocator, host: []const u8, port: u16) !void {
     };
     defer fetch_result.deinit();
 
-    // TODO: Unzip downloaded archive into `temp_dir`.
-    //       Unfortunatelly Zig's standard library doesn't implement unzipping.
+    try unzip.unzip(allocator, new_publish_archive, temp_dir);
 
     // TODO: Make extracted application executable.
 
