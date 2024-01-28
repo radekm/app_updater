@@ -1,7 +1,7 @@
-Copyright © 2023 Radek Micek
+Everything in this repository except `doc/APPNOTE-2.0.txt`
+is distributed under the terms of the MIT License (included below):
 
-This program is distributed under the terms of the MIT License
-(included below).
+Copyright © 2023-24 Radek Micek
 
 # MIT License
 
