@@ -418,8 +418,7 @@ pub fn unzip(
                         defer fifo.deinit();
                         try fifo.ensureTotalCapacity(4096);
                         try fifo.pump(decompressor.reader(), dest_file.writer());
-                        // TODO: What to do if there's an error? Can we ingore it?
-                        _ = decompressor.close();
+                        try decompressor.close();
                     },
                 }
             }
