@@ -33,16 +33,39 @@ pub fn main() !void {
     try server.listen();
 }
 
+// Either returns query parameter from `req` or `shared.default_publish_archive`.
+fn getArchiveName(req: *httpz.Request) ![]const u8 {
+    const query = try req.query();
+    if (query.get("archive")) |archive| {
+        var dir = try std.fs.cwd().openDir(".", .{ .iterate = true });
+        defer dir.close();
+
+        var it = dir.iterate();
+        while (try it.next()) |entry| {
+            if (entry.kind == .file and
+                std.mem.endsWith(u8, entry.name, ".zip") and
+                std.mem.eql(u8, entry.name, archive))
+            {
+                return archive;
+            }
+        }
+    }
+
+    return shared.default_publish_archive;
+}
+
 fn getHash(req: *httpz.Request, res: *httpz.Response) !void {
     res.content_type = httpz.ContentType.TEXT;
-    const hex_hash = try shared.hashFile(req.arena, shared.publish_archive);
-    std.debug.print("Computed hash {s}\n", .{hex_hash});
+    const publish_archive = try getArchiveName(req);
+    const hex_hash = try shared.hashFile(req.arena, publish_archive);
+    std.debug.print("Computed hash {s} of file {s}\n", .{ hex_hash, publish_archive });
     try res.writer().writeAll(&hex_hash);
 }
 
 fn getFile(req: *httpz.Request, res: *httpz.Response) !void {
     res.content_type = httpz.ContentType.BINARY;
-    const contents = try shared.readFile(req.arena, shared.publish_archive);
-    std.debug.print("Sending file with {} bytes\n", .{contents.len});
+    const publish_archive = try getArchiveName(req);
+    const contents = try shared.readFile(req.arena, publish_archive);
+    std.debug.print("Sending file {s} with {} bytes\n", .{ publish_archive, contents.len });
     res.body = contents;
 }

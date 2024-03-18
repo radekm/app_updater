@@ -7,7 +7,7 @@ const Allocator = std.mem.Allocator;
 
 // Returns `false` iff remote hash can't be downloaded or both remote and local hashes are equal.
 pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16) bool {
-    const local_hex_hash = shared.hashFile(allocator, shared.publish_archive) catch |e| {
+    const local_hex_hash = shared.hashFile(allocator, shared.default_publish_archive) catch |e| {
         std.debug.print("Can't compute local hash {}\n", .{e});
         return true;
     };
@@ -45,7 +45,7 @@ pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16) bool {
 const UpdateError = error{NotOkHttpStatus};
 
 pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []const u8) !void {
-    const new_publish_archive = "new-" ++ shared.publish_archive;
+    const new_publish_archive = "new-" ++ shared.default_publish_archive;
     const temp_dir = "temp";
 
     std.debug.print("Deleting temporaries\n", .{});
@@ -118,12 +118,12 @@ pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []c
 
         try std.fs.cwd().deleteTree(shared.publish_dir);
         try std.fs.cwd().rename(temp_publish_dir, shared.publish_dir);
-        std.fs.cwd().deleteFile(shared.publish_archive) catch |e| {
+        std.fs.cwd().deleteFile(shared.default_publish_archive) catch |e| {
             // Ignore file not found error.
             if (e != std.fs.Dir.DeleteFileError.FileNotFound)
                 return e;
         };
-        try std.fs.cwd().rename(new_publish_archive, shared.publish_archive);
+        try std.fs.cwd().rename(new_publish_archive, shared.default_publish_archive);
     }
 
     std.debug.print("Deleting temporaries\n", .{});

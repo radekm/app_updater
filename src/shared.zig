@@ -3,8 +3,8 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Sha256 = std.crypto.hash.sha2.Sha256;
 
-// `publish_archive` must contain directory `publish_dir`.
-pub const publish_archive = "publish.zip";
+// `default_publish_archive` must contain directory `publish_dir`.
+pub const default_publish_archive = "publish.zip";
 pub const publish_dir = "publish";
 
 pub fn readFile(allocator: Allocator, sub_path: []const u8) ![]u8 {
