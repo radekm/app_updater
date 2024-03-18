@@ -22,25 +22,27 @@ pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16) bool {
     ) catch @panic("Can't format URL");
     defer allocator.free(hash_url);
 
-    var result = client.fetch(
-        allocator,
-        .{ .location = .{ .url = hash_url } },
-    ) catch |e| {
+    var body = std.ArrayList(u8).init(allocator);
+    defer body.deinit();
+    const result = client.fetch(.{
+        .location = .{ .url = hash_url },
+        .response_storage = .{ .dynamic = &body },
+        .max_append_size = 2048, // Hash is short.
+    }) catch |e| {
         std.debug.print("Can't fetch remote hash {}\n", .{e});
         return false;
     };
-    defer result.deinit();
-
-    const remote_hex_hash = result.body orelse {
-        std.debug.print("Remote hash is missing\n", .{});
+    if (result.status != std.http.Status.ok) {
         return false;
-    };
+    }
+
+    const remote_hex_hash = body.items;
 
     std.debug.print("Local hash {s}, remote hash {s}\n", .{ local_hex_hash, remote_hex_hash });
     return !std.mem.eql(u8, remote_hex_hash, &local_hex_hash);
 }
 
-const UpdateError = error{MissingRemoteData};
+const UpdateError = error{NotOkHttpStatus};
 
 pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []const u8) !void {
     const new_publish_archive = "new-" ++ shared.publish_archive;
@@ -55,26 +57,33 @@ pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []c
     try std.fs.cwd().deleteTree(temp_dir);
 
     std.debug.print("Downloading archive {s}\n", .{new_publish_archive});
+    {
+        var client = http.Client{ .allocator = allocator };
+        defer client.deinit();
+        const download_url = std.fmt.allocPrint(
+            allocator,
+            "http://{s}:{}/download",
+            .{ host, port },
+        ) catch @panic("Can't format URL");
+        defer allocator.free(download_url);
 
-    var client = http.Client{ .allocator = allocator };
-    defer client.deinit();
+        var body = std.ArrayList(u8).init(allocator);
+        defer body.deinit();
 
-    const download_url = std.fmt.allocPrint(
-        allocator,
-        "http://{s}:{}/download",
-        .{ host, port },
-    ) catch @panic("Can't format URL");
-    defer allocator.free(download_url);
-
-    var fetch_result = fetch: {
         const file = try std.fs.cwd().createFile(new_publish_archive, .{});
         defer file.close();
-        break :fetch try client.fetch(
-            allocator,
-            .{ .location = .{ .url = download_url }, .response_strategy = .{ .file = file } },
-        );
-    };
-    defer fetch_result.deinit();
+
+        const result = try client.fetch(.{
+            .location = .{ .url = download_url },
+            .response_storage = .{ .dynamic = &body },
+            .max_append_size = 1024 * 1024 * 200,
+        });
+        if (result.status != std.http.Status.ok) {
+            return UpdateError.NotOkHttpStatus;
+        }
+
+        try file.writeAll(body.items);
+    }
 
     try unzip.unzip(allocator, new_publish_archive, temp_dir);
 

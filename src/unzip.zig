@@ -367,11 +367,6 @@ pub fn unzip(
 
         const local_header = try readLocalFileHeader(&local_fbs);
 
-        var dummy_fbs = std.io.fixedBufferStream(&[_]u8{});
-        const dummy_reader = dummy_fbs.reader();
-        var decompressor = try std.compress.deflate.decompressor(allocator, dummy_reader, null);
-        defer decompressor.deinit();
-
         if (central_header.compression != local_header.compression or
             central_header.crc32 != local_header.crc32 or
             central_header.compressed_size != local_header.compressed_data.len or
@@ -411,14 +406,7 @@ pub fn unzip(
                     },
                     Compression.deflate => {
                         var fbs = std.io.fixedBufferStream(local_header.compressed_data);
-                        const reader = fbs.reader();
-                        try decompressor.reset(reader, null);
-                        // TODO: Can we reuse `LinearFifo`? If so do it.
-                        var fifo = std.fifo.LinearFifo(u8, .Dynamic).init(allocator);
-                        defer fifo.deinit();
-                        try fifo.ensureTotalCapacity(4096);
-                        try fifo.pump(decompressor.reader(), dest_file.writer());
-                        try decompressor.close();
+                        try std.compress.flate.decompress(fbs.reader(), dest_file.writer());
                     },
                 }
             }
