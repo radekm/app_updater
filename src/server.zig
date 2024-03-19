@@ -51,6 +51,7 @@ fn getArchiveName(req: *httpz.Request) ![]const u8 {
                 return archive;
             }
         }
+        return std.fs.File.OpenError.FileNotFound;
     }
 
     // Return default for compatibility with old clients which don't send `archive` query parameter.
