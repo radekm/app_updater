@@ -6,9 +6,9 @@ const unzip = @import("unzip.zig");
 const Allocator = std.mem.Allocator;
 
 // Returns `false` iff remote hash can't be downloaded or both remote and local hashes are equal.
-pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16) bool {
-    const local_hex_hash = shared.hashFile(allocator, shared.default_publish_archive) catch |e| {
-        std.debug.print("Can't compute local hash {}\n", .{e});
+pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16, archive: []const u8) bool {
+    const local_hex_hash = shared.hashFile(allocator, archive) catch |e| {
+        std.debug.print("Can't compute local hash {} of {s}\n", .{ e, archive });
         return true;
     };
 
@@ -17,8 +17,8 @@ pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16) bool {
 
     const hash_url = std.fmt.allocPrint(
         allocator,
-        "http://{s}:{}/hash",
-        .{ host, port },
+        "http://{s}:{}/hash?archive={s}",
+        .{ host, port, archive },
     ) catch @panic("Can't format URL");
     defer allocator.free(hash_url);
 
@@ -44,8 +44,10 @@ pub fn updateNeeded(allocator: Allocator, host: []const u8, port: u16) bool {
 
 const UpdateError = error{NotOkHttpStatus};
 
-pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []const u8) !void {
-    const new_publish_archive = "new-" ++ shared.default_publish_archive;
+pub fn update(allocator: Allocator, host: []const u8, port: u16, archive: []const u8, executable: []const u8) !void {
+    const new_publish_archive = try std.fmt.allocPrint(allocator, "new-{s}", .{archive});
+    defer allocator.free(new_publish_archive);
+
     const temp_dir = "temp";
 
     std.debug.print("Deleting temporaries\n", .{});
@@ -56,22 +58,19 @@ pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []c
     };
     try std.fs.cwd().deleteTree(temp_dir);
 
-    std.debug.print("Downloading archive {s}\n", .{new_publish_archive});
+    std.debug.print("Downloading archive {s} as {s}\n", .{ archive, new_publish_archive });
     {
         var client = http.Client{ .allocator = allocator };
         defer client.deinit();
         const download_url = std.fmt.allocPrint(
             allocator,
-            "http://{s}:{}/download",
-            .{ host, port },
+            "http://{s}:{}/download?archive={s}",
+            .{ host, port, archive },
         ) catch @panic("Can't format URL");
         defer allocator.free(download_url);
 
         var body = std.ArrayList(u8).init(allocator);
         defer body.deinit();
-
-        const file = try std.fs.cwd().createFile(new_publish_archive, .{});
-        defer file.close();
 
         const result = try client.fetch(.{
             .location = .{ .url = download_url },
@@ -82,6 +81,8 @@ pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []c
             return UpdateError.NotOkHttpStatus;
         }
 
+        const file = try std.fs.cwd().createFile(new_publish_archive, .{});
+        defer file.close();
         try file.writeAll(body.items);
     }
 
@@ -118,12 +119,12 @@ pub fn update(allocator: Allocator, host: []const u8, port: u16, executable: []c
 
         try std.fs.cwd().deleteTree(shared.publish_dir);
         try std.fs.cwd().rename(temp_publish_dir, shared.publish_dir);
-        std.fs.cwd().deleteFile(shared.default_publish_archive) catch |e| {
+        std.fs.cwd().deleteFile(archive) catch |e| {
             // Ignore file not found error.
             if (e != std.fs.Dir.DeleteFileError.FileNotFound)
                 return e;
         };
-        try std.fs.cwd().rename(new_publish_archive, shared.default_publish_archive);
+        try std.fs.cwd().rename(new_publish_archive, archive);
     }
 
     std.debug.print("Deleting temporaries\n", .{});
@@ -139,16 +140,17 @@ pub fn main() !void {
 
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
-    if (args.len < 4) {
+    if (args.len < 5) {
         return MainError.NotEnoughArguments;
     }
     const host = args[1];
     const port = try std.fmt.parseInt(u16, args[2], 10);
-    const executable = args[3]; // Program to run inside `publish_dir`.
+    const archive = args[3];
+    const executable = args[4]; // Program to run inside `publish_dir`.
 
-    if (updateNeeded(allocator, host, port)) {
-        update(allocator, host, port, executable) catch |e| {
-            std.debug.print("Updating failed with {}", .{e});
+    if (updateNeeded(allocator, host, port, archive)) {
+        update(allocator, host, port, archive, executable) catch |e| {
+            std.debug.print("Updating failed with {}\n", .{e});
         };
     }
 

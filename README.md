@@ -22,18 +22,26 @@ Start server
 ./server 127.0.0.1 2222
 ```
 
-In your browser you can check that `http://localhost:2222/hash` shows hash of `publish.zip`.
+In your browser you can check that `http://localhost:2222/hash?archive=publish.zip`
+shows hash of `publish.zip`. The server distributes all files in its working directory
+with `.zip` extension.
 
 The third step is to distribute `app-updater.exe` executable to your user
 and create a shortcut icon which will run
 
 ```
-app-updater.exe hostname 2222 YourAppName.exe
+app-updater.exe hostname 2222 publish.zip YourAppName.exe
 ```
 
-where `hostname` is hostname of your server, `2222` is port where our server runs
-and `YourAppName.exe` is an executable of your application
-(it should exist in your `publish` directory).
+where
+
+- `hostname` is hostname of your server,
+- `2222` is port where our server runs,
+- `publish.zip` is the name of the archive
+  which contains `publish` directory and has `.zip` extension,
+- and `YourAppName.exe` is an executable of your application
+  which exists in `publish` directory from the archive.
+
 `app-updater.exe` will download and extract `publish.zip` to current working directory
 and run the executable.
 

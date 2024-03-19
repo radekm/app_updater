@@ -33,7 +33,9 @@ pub fn main() !void {
     try server.listen();
 }
 
-// Either returns query parameter from `req` or `shared.default_publish_archive`.
+const default_publish_archive = "publish.zip";
+
+/// Either returns query parameter from `req` or `default_publish_archive`.
 fn getArchiveName(req: *httpz.Request) ![]const u8 {
     const query = try req.query();
     if (query.get("archive")) |archive| {
@@ -51,7 +53,8 @@ fn getArchiveName(req: *httpz.Request) ![]const u8 {
         }
     }
 
-    return shared.default_publish_archive;
+    // Return default for compatibility with old clients which don't send `archive` query parameter.
+    return default_publish_archive;
 }
 
 fn getHash(req: *httpz.Request, res: *httpz.Response) !void {
